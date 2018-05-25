@@ -40,6 +40,7 @@ namespace GoogleFormRegistrationMapper
             }
         }
 
+
         private void btnStart_Click(object sender, EventArgs e)
         {
             FileInfo file = new FileInfo(_readFilePath);
@@ -92,6 +93,18 @@ namespace GoogleFormRegistrationMapper
 
         private void btn_generate_Click(object sender, EventArgs e)
         {
+            Dictionary<string, int> specialTrackCount = new Dictionary<string, int>();
+            if (dgv_specialCount.RowCount > 0)
+            {
+                foreach (DataGridViewRow row in dgv_specialCount.Rows)
+                {
+                    if (row.Cells[0].Value != null)
+                    {
+                        specialTrackCount.Add(row.Cells[0].Value.ToString(), int.Parse(row.Cells[1].Value.ToString()));
+                    }
+                }
+            }
+
             int max = int.Parse(txt_max.Text);
             _choice1ColumnIndex = cmb_choice1.SelectedIndex;
             _choice2ColumnIndex = cmb_choice2.SelectedIndex;
@@ -100,18 +113,19 @@ namespace GoogleFormRegistrationMapper
 
             var rows = _allFileData.Tables[0].Rows.Cast<DataRow>();
 
-            List<string> finishedStudents = new List<string>();
+            Dictionary<string, int> finishedStudents = new Dictionary<string, int>();
 
             Dictionary<string, List<List<string>>> tracksData = new Dictionary<string, List<List<string>>>();
             foreach (var r in rows)
             {
+                int trackMax = max;
+                int fullfilledTrack = -1;
+
                 string currentId = r[_idColumnIndex].ToString().ToLower();
-                if (finishedStudents.Contains(currentId))
+                if (finishedStudents.ContainsKey(currentId))
                 {
                     continue;
                 }
-
-                finishedStudents.Add(currentId);
 
                 bool finished = false;
                 string choice1 = r[_choice1ColumnIndex].ToString();
@@ -122,37 +136,61 @@ namespace GoogleFormRegistrationMapper
                 {
                     tracksData.Add(choice1, new List<List<string>>());
                 }
-                if (tracksData[choice1].Count < max)
+
+                if (specialTrackCount.ContainsKey(choice1))
+                {
+                    trackMax = specialTrackCount[choice1];
+                }
+
+                if (tracksData[choice1].Count < trackMax)
                 {
                     tracksData[choice1].Add(r.ItemArray.Select(x => x.ToString()).ToList());
                     finished = true;
+                    fullfilledTrack = 1;
                 }
 
                 if (finished == false)
                 {
+                    trackMax = max;
                     if (tracksData.ContainsKey(choice2) == false)
                     {
                         tracksData.Add(choice2, new List<List<string>>());
                     }
-                    if (tracksData[choice2].Count < max)
+
+                    if (specialTrackCount.ContainsKey(choice2))
+                    {
+                        trackMax = specialTrackCount[choice2];
+                    }
+
+                    if (tracksData[choice2].Count < trackMax)
                     {
                         tracksData[choice2].Add(r.ItemArray.Select(x => x.ToString()).ToList());
                         finished = true;
+                        fullfilledTrack = 2;
                     }
 
                     if (finished == false)
                     {
+                        trackMax = max;
                         if (tracksData.ContainsKey(choice3) == false)
                         {
                             tracksData.Add(choice3, new List<List<string>>());
                         }
-                        if (tracksData[choice3].Count < max)
+
+                        if (specialTrackCount.ContainsKey(choice3))
+                        {
+                            trackMax = specialTrackCount[choice3];
+                        }
+
+                        if (tracksData[choice3].Count < trackMax)
                         {
                             tracksData[choice3].Add(r.ItemArray.Select(x => x.ToString()).ToList());
                             finished = true;
+                            fullfilledTrack = 3;
                         }
                     }
                 }
+
                 if (finished == false)
                 {
                     if (tracksData.ContainsKey("Not Assigned") == false)
@@ -161,18 +199,18 @@ namespace GoogleFormRegistrationMapper
                     }
                     tracksData["Not Assigned"].Add(r.ItemArray.Select(x => x.ToString()).ToList());
                 }
+                finishedStudents.Add(currentId, fullfilledTrack);
             }
 
-            SaveExcel(tracksData);
+            SaveExcel(tracksData, finishedStudents);
         }
 
-        private void SaveExcel(Dictionary<string, List<List<string>>> tracks)
-        {
+        private void SaveExcel(Dictionary<string, List<List<string>>> tracks, Dictionary<string, int> allStudentsData)
+        { 
             SaveFileDialog fileDialog = new SaveFileDialog();
             fileDialog.Filter = "Excel File|*.xlsx";
             if (fileDialog.ShowDialog() == DialogResult.OK)
             {
-
                 using (ExcelPackage excel = new ExcelPackage())
                 {
                     foreach (var tr in tracks)
@@ -187,6 +225,18 @@ namespace GoogleFormRegistrationMapper
                             worksheet.Cells[headerRange.Replace("1", counter.ToString())].LoadFromArrays(new List<string[]>() { row.ToArray() });
                             counter++;
                         }
+                    }
+
+                    // All Students
+                    var worksheet2 = excel.Workbook.Worksheets.Add("ALL STUDENTS");
+
+                    string headerRange2 = "A1:B1";
+                    worksheet2.Cells[headerRange2].LoadFromArrays(new List<string[]>() { new[] { "Student ID", "Track Number"} });
+                    int counter2 = 2;
+                    foreach (var id in allStudentsData.Keys)
+                    {
+                        worksheet2.Cells[headerRange2.Replace("1", counter2.ToString())].LoadFromArrays(new List<string[]>() { new[] { id, allStudentsData[id].ToString() } });
+                        counter2++;
                     }
 
 
