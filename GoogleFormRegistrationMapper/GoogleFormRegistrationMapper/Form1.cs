@@ -215,7 +215,7 @@ namespace GoogleFormRegistrationMapper
                 {
                     foreach (var tr in tracks)
                     {
-                        var worksheet = excel.Workbook.Worksheets.Add(tr.Key);
+                        var worksheet = excel.Workbook.Worksheets.Add(tr.Key.Replace(" ", ""));
 
                         string headerRange = "A1:" + Char.ConvertFromUtf32(ColumnNames.Count + 64) + "1";
                         worksheet.Cells[headerRange].LoadFromArrays(new List<string[]>() { ColumnNames.ToArray() });
