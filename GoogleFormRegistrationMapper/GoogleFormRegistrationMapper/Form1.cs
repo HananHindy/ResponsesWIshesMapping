@@ -106,6 +106,7 @@ namespace GoogleFormRegistrationMapper
             }
 
             int max = int.Parse(txt_max.Text);
+            _idColumnIndex = cmb_id.SelectedIndex;
             _choice1ColumnIndex = cmb_choice1.SelectedIndex;
             _choice2ColumnIndex = cmb_choice2.SelectedIndex;
             _choice3ColumnIndex = cmb_choice3.SelectedIndex;
